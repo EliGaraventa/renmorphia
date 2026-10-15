@@ -17,7 +17,7 @@ let contadorRevisionGlobal = 0;
 
 // --- CONFIGURACIÓN DE TIEMPO (4 DÍAS) ---
 const FECHA_INICIO = new Date(); 
-const URL_SIGUIENTE_WEB = "./Recorrido/recorrido.html"; 
+const URL_SIGUIENTE_WEB = "./mapa/recorrido.html"; 
 
 function obtenerDiaActual() {
   const ahora = new Date();
