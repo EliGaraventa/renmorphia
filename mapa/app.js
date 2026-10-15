@@ -1,12 +1,12 @@
-// ====== PUNTOS DEL RECORRIDO ======
-const PLAZA_ROCHA = [-34.9214, -57.9603];
-const FACULTAD_ARTES = [-34.9156, -57.9478];
+// ====== COORDENADAS EXACTAS: 4 PUNTOS DE LA PLATA ======
+const P_7_54   = [-34.9156, -57.9482]; // 7 y 54
+const P_BOSQUE = [-34.9085, -57.9356]; // Bosque de La Plata
+const P_115_50 = [-34.9038, -57.9375]; // Facultad de Ciencias Exactas (115 y 50)
+const P_123_51 = [-34.8938, -57.9305]; // Facultad de Psicología (123 y 51)
 
-const CENTRO = [
-    (PLAZA_ROCHA[0] + FACULTAD_ARTES[0]) / 2,
-    (PLAZA_ROCHA[1] + FACULTAD_ARTES[1]) / 2
-];
-const ZOOM_INICIAL = 15;
+// Centro estratégico para abarcar los 4 puntos cómodamente
+const CENTRO = [-34.9050, -57.9380];
+const ZOOM_INICIAL = 14;
 
 // ====== CREAR MAPA ======
 const map = L.map('map', {
@@ -23,37 +23,22 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap'
 }).addTo(map);
 
-// ====== RECORRIDO CURVO ======
-function generarRecorridoCurvo(inicio, fin, cantidadPuntos) {
-    const puntos = [];
-    for (let i = 0; i <= cantidadPuntos; i++) {
-        const t = i / cantidadPuntos;
-        const lat = inicio[0] + (fin[0] - inicio[0]) * t;
-        const lng = inicio[1] + (fin[1] - inicio[1]) * t;
-        const curvatura = Math.sin(t * Math.PI) * 0.0012;
-        puntos.push([lat + curvatura, lng - curvatura * 0.5]);
-    }
-    return puntos;
-}
+// Forzado de renderizado para iOS Safari al cargar y cambiar orientación
+setTimeout(() => { map.invalidateSize(); }, 300);
+window.addEventListener('orientationchange', () => {
+    setTimeout(() => { map.invalidateSize(); }, 300);
+});
 
-const recorrido = generarRecorridoCurvo(PLAZA_ROCHA, FACULTAD_ARTES, 20);
-
-L.polyline(recorrido, {
-    color: '#ff00ff',
-    weight: 3,
-    opacity: 0,
-    className: 'uv-path',
-    lineCap: 'round',
-    lineJoin: 'round'
-}).addTo(map);
-
-// ====== PUNTOS DE INTERÉS ======
+// ====== PUNTOS DE INTERÉS A REVELAR ======
 const puntosInteres = [
-    { coords: PLAZA_ROCHA, label: '01', nombre: 'Plaza Rocha' },
-    { coords: FACULTAD_ARTES, label: '02', nombre: 'Facultad de Artes' }
+    { coords: P_7_54,   label: '01', nombre: '7 y 54' },
+    { coords: P_BOSQUE, label: '02', nombre: 'Bosque de La Plata' },
+    { coords: P_115_50, label: '03', nombre: 'Facultad de Ciencias Exactas' },
+    { coords: P_123_51, label: '04', nombre: 'Facultad de Psicología' }
 ];
 
 puntosInteres.forEach(punto => {
+    // Generamos el punto circular brillante
     L.circleMarker(punto.coords, {
         radius: 7,
         color: '#ff00ff',
@@ -63,6 +48,7 @@ puntosInteres.forEach(punto => {
         className: 'uv-point'
     }).addTo(map);
 
+    // Generamos el texto con el número flotante
     L.marker(punto.coords, {
         icon: L.divIcon({
             className: 'uv-label',
@@ -94,7 +80,6 @@ function setMode(mode) {
 
 function detectarModoPorHora() {
     const hora = new Date().getHours();
-    // Entre las 19:00 y las 06:59 activa el modo noche
     if (hora >= 19 || hora < 7) {
         setMode('night');
     } else {
@@ -102,7 +87,7 @@ function detectarModoPorHora() {
     }
 }
 
-// ====== LINTERNA UV ======
+// ====== LINTERNA UV (Optimizado para Touch en iOS) ======
 function updateFlashlight(x, y) {
     overlay.style.setProperty('--mouse-x', x + 'px');
     overlay.style.setProperty('--mouse-y', y + 'px');
@@ -116,15 +101,20 @@ mapContainer.addEventListener('mousemove', (e) => {
 });
 
 mapContainer.addEventListener('touchmove', (e) => {
-    const rect = mapContainer.getBoundingClientRect();
-    const touch = e.touches[0];
-    updateFlashlight(touch.clientX - rect.left, touch.clientY - rect.top);
+    if (e.touches && e.touches[0]) {
+        const rect = mapContainer.getBoundingClientRect();
+        const touch = e.touches[0];
+        updateFlashlight(touch.clientX - rect.left, touch.clientY - rect.top);
+    }
 }, { passive: true });
 
-mapContainer.addEventListener('mouseenter', (e) => {
-    const rect = mapContainer.getBoundingClientRect();
-    updateFlashlight(e.clientX - rect.left, e.clientY - rect.top);
-});
+mapContainer.addEventListener('touchstart', (e) => {
+    if (e.touches && e.touches[0]) {
+        const rect = mapContainer.getBoundingClientRect();
+        const touch = e.touches[0];
+        updateFlashlight(touch.clientX - rect.left, touch.clientY - rect.top);
+    }
+}, { passive: true });
 
 // ====== PARTÍCULAS UV ======
 const particlesContainer = document.getElementById('particles');
@@ -142,7 +132,7 @@ function crearParticulas(cantidad) {
         particlesContainer.appendChild(p);
     }
 }
-crearParticulas(40);
+crearParticulas(30);
 
 // ====== ESTRELLAS UV ======
 const starsCanvas = document.getElementById('stars');
@@ -163,7 +153,7 @@ function resizeStarsCanvas() {
 
 function generarEstrellas(w, h) {
     stars = [];
-    const cantidad = Math.floor((w * h) / 6000);
+    const cantidad = Math.floor((w * h) / 7000);
     for (let i = 0; i < cantidad; i++) {
         stars.push({
             x: Math.random() * w,
@@ -187,12 +177,8 @@ function dibujarEstrellas(tiempo) {
 
         if (s.hue === 'uv') {
             starsCtx.fillStyle = `rgba(255, 0, 255, ${a})`;
-            starsCtx.shadowColor = 'rgba(255, 0, 255, 0.9)';
-            starsCtx.shadowBlur = 8;
         } else {
             starsCtx.fillStyle = `rgba(255, 255, 255, ${a})`;
-            starsCtx.shadowColor = 'rgba(200, 180, 255, 0.8)';
-            starsCtx.shadowBlur = 6;
         }
 
         starsCtx.beginPath();
@@ -200,7 +186,6 @@ function dibujarEstrellas(tiempo) {
         starsCtx.fill();
     }
 
-    starsCtx.shadowBlur = 0;
     starsAnimationId = requestAnimationFrame(dibujarEstrellas);
 }
 
@@ -229,11 +214,9 @@ const observerModo = new MutationObserver(() => {
 });
 observerModo.observe(body, { attributes: true, attributeFilter: ['class'] });
 
-// ====== GIROSCOPIO ======
+// ====== GIROSCOPIO BLINDADO PARA iOS ======
 const esTactil = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-const tieneSensor = typeof window.DeviceOrientationEvent !== 'undefined';
-
-if (esTactil || tieneSensor) {
+if (esTactil && typeof window.DeviceOrientationEvent !== 'undefined') {
     btnGyro.classList.add('visible');
 }
 
@@ -244,17 +227,17 @@ let gyroCurrent = { x: 0, y: 0 };
 let gyroRAF = null;
 
 async function pedirPermisoGiroscopio() {
-    if (typeof DeviceOrientationEvent !== 'undefined' &&
-        typeof DeviceOrientationEvent.requestPermission === 'function') {
-        try {
+    try {
+        if (typeof DeviceOrientationEvent !== 'undefined' &&
+            typeof DeviceOrientationEvent.requestPermission === 'function') {
             const permiso = await DeviceOrientationEvent.requestPermission();
             return permiso === 'granted';
-        } catch (err) {
-            console.warn('Permiso denegado:', err);
-            return false;
         }
+        return true;
+    } catch (err) {
+        console.warn('Permiso denegado o no soportado:', err);
+        return false;
     }
-    return true;
 }
 
 function onDeviceOrientation(e) {
@@ -295,7 +278,7 @@ async function activarGiroscopio() {
     const ok = await pedirPermisoGiroscopio();
 
     if (!ok) {
-        gyroText.textContent = 'Permiso denegado';
+        gyroText.textContent = 'Requiere HTTPS';
         setTimeout(() => { gyroText.textContent = 'Activar giroscopio'; }, 2000);
         return;
     }
@@ -309,7 +292,7 @@ async function activarGiroscopio() {
     gyroTarget.x = rect.width / 2;
     gyroTarget.y = rect.height / 2;
 
-    window.addEventListener('deviceorientation', onDeviceOrientation);
+    window.addEventListener('deviceorientation', onDeviceOrientation, true);
     gyroRAF = requestAnimationFrame(gyroLoop);
 
     btnGyro.classList.add('active');
@@ -319,7 +302,7 @@ async function activarGiroscopio() {
 function desactivarGiroscopio() {
     gyroActivo = false;
     gyroBase = null;
-    window.removeEventListener('deviceorientation', onDeviceOrientation);
+    window.removeEventListener('deviceorientation', onDeviceOrientation, true);
     if (gyroRAF) {
         cancelAnimationFrame(gyroRAF);
         gyroRAF = null;
@@ -337,19 +320,9 @@ btnGyro.addEventListener('click', (e) => {
     }
 });
 
-mapContainer.addEventListener('touchstart', (e) => {
-    if (gyroActivo && !btnGyro.contains(e.target)) {
-        desactivarGiroscopio();
-    }
-}, { passive: true });
-
-window.addEventListener('resize', () => {
-    if (gyroActivo) gyroBase = null;
-});
-
 // ====== INICIALIZAR ======
 detectarModoPorHora();
-setInterval(detectarModoPorHora, 60000); // Revisa la hora cada 60 segundos
+setInterval(detectarModoPorHora, 60000);
 
 if (body.classList.contains('night')) {
     iniciarEstrellas();
